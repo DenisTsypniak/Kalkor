@@ -1,0 +1,122 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.1.0)'
+        required: true
+        default: 'v1.1.0'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build main application
+      run: |
+        pyinstaller Kalkor.spec --clean --noconfirm
+        
+    - name: Build updater
+      run: |
+        pyinstaller updater.spec --clean --noconfirm
+        
+    - name: Create release package
+      run: |
+        mkdir release_package
+        copy dist\Kalkor.exe release_package\
+        copy dist\updater.exe release_package\
+        copy latest_version.json release_package\
+        copy README.md release_package\
+        
+        # Create zip file
+        powershell Compress-Archive -Path release_package\* -DestinationPath Kalkor_${{ github.ref_name }}.zip
+        
+    - name: Calculate SHA256
+      id: sha256
+      run: |
+        $hash = (Get-FileHash -Path "Kalkor_${{ github.ref_name }}.zip" -Algorithm SHA256).Hash
+        echo "hash=$hash" >> $env:GITHUB_OUTPUT
+        
+    - name: Update latest_version.json
+      run: |
+        $version = "${{ github.ref_name }}"
+        $url = "https://github.com/${{ github.repository }}/releases/download/$version/Kalkor_$version.zip"
+        $hash = "${{ steps.sha256.outputs.hash }}"
+        
+        $json = Get-Content latest_version.json | ConvertFrom-Json
+        $json.version = $version.TrimStart('v')
+        $json.url = $url
+        $json.sha256 = $hash
+        $json.release_date = (Get-Date).ToString("yyyy-MM-dd")
+        
+        $json | ConvertTo-Json -Depth 10 | Set-Content latest_version.json
+        
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          ## 🚀 New Release ${{ github.ref_name }}
+          
+          ### 📦 What's New:
+          - Complete code cleanup and optimization
+          - Fixed all bugs and improved performance
+          - Added database indexes for better performance
+          - Improved exception handling
+          - Reorganized project structure
+          - Added comprehensive testing
+          - Implemented automatic update system
+          
+          ### 📥 Download:
+          - **Kalkor_${{ github.ref_name }}.zip** - Full application package
+          
+          ### 🔧 Installation:
+          1. Download the zip file
+          2. Extract to your desired folder
+          3. Run `Kalkor.exe`
+          
+          ### 🔄 Auto-Update:
+          The application will automatically check for updates and notify you when a new version is available.
+          
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./Kalkor_${{ github.ref_name }}.zip
+        asset_name: Kalkor_${{ github.ref_name }}.zip
+        asset_content_type: application/zip
+        
+    - name: Commit updated latest_version.json
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add latest_version.json
+        git commit -m "Update latest_version.json for ${{ github.ref_name }}" || exit 0
+        git push
+

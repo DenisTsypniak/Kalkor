@@ -1,0 +1,50 @@
+{
+  "app": {
+    "name": "Kalkulator",
+    "version": "1.1.0",
+    "language": "uk",
+    "theme": "light",
+    "window": {
+      "width": 1200,
+      "height": 800,
+      "min_width": 800,
+      "min_height": 600
+    }
+  },
+  "database": {
+    "path": "tracker.db",
+    "backup_enabled": true,
+    "backup_interval": 24,
+    "max_backups": 5
+  },
+  "logging": {
+    "level": "INFO",
+    "file_enabled": true,
+    "console_enabled": true,
+    "max_file_size": 10485760,
+    "backup_count": 5
+  },
+  "updates": {
+    "auto_check": true,
+    "check_interval": 24,
+    "download_url": "https://api.github.com/repos/your-repo/releases/latest"
+  },
+  "ui": {
+    "animations_enabled": true,
+    "sound_enabled": true,
+    "notifications_enabled": true,
+    "auto_save": true,
+    "auto_save_interval": 30
+  },
+  "security": {
+    "data_encryption": false,
+    "backup_encryption": false,
+    "session_timeout": 3600
+  },
+  "performance": {
+    "cache_enabled": true,
+    "cache_size": 100,
+    "lazy_loading": true,
+    "batch_size": 100
+  }
+}
