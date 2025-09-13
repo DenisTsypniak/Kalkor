@@ -5,7 +5,7 @@ import os
 import sys
 import base64
 
-APP_VERSION = "1.2.3"
+APP_VERSION = "1.2.4"
 
 GITHUB_REPO = "DenisTsypniak/Kalkor"
 MAIN_EXE_NAME = "Kalkor.exe"
