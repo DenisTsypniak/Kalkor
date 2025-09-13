@@ -14,6 +14,9 @@ on:
 jobs:
   build-and-release:
     runs-on: windows-latest
+    permissions:
+      contents: write
+      packages: write
     
     steps:
     - name: Checkout code
@@ -70,12 +73,10 @@ jobs:
         $json | ConvertTo-Json -Depth 10 | Set-Content latest_version.json
         
     - name: Create Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
         body: |
           ## 🚀 New Release ${{ github.ref_name }}
           
@@ -99,18 +100,10 @@ jobs:
           ### 🔄 Auto-Update:
           The application will automatically check for updates and notify you when a new version is available.
           
+        files: |
+          Kalkor_${{ github.ref_name }}.zip
         draft: false
         prerelease: false
-        
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./Kalkor_${{ github.ref_name }}.zip
-        asset_name: Kalkor_${{ github.ref_name }}.zip
-        asset_content_type: application/zip
         
     - name: Commit updated latest_version.json
       run: |
