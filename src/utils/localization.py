@@ -3,6 +3,7 @@
 """
 import json
 import os
+import sys
 from typing import Dict, Any, Optional
 import logging
 
@@ -14,7 +15,8 @@ class LocalizationManager:
     """Покращений менеджер локалізації"""
     
     def __init__(self, locale_dir: str = "locale"):
-        self.locale_dir = locale_dir
+        # Використовуємо resource_path для правильної роботи з PyInstaller
+        self.locale_dir = self._get_resource_path(locale_dir)
         self.logger = get_logger(__name__)
         self._translations: Dict[str, str] = {}
         self.current_language = "uk"
@@ -27,6 +29,17 @@ class LocalizationManager:
             "ru": {"lang_name": "Русский"}
         }
     
+    def _get_resource_path(self, relative_path: str) -> str:
+        """
+        Отримує абсолютний шлях до ресурсу, працює як для розробки, так і для PyInstaller.
+        """
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller створює тимчасову папку і зберігає шлях в _MEIPASS
+            return os.path.join(sys._MEIPASS, relative_path)
+        
+        # Для розробки - відносно поточної директорії
+        return os.path.abspath(relative_path)
+    
     @handle_errors("load_language")
     def load_language(self, language_code: str) -> None:
         """Завантажує мову"""
@@ -34,10 +47,12 @@ class LocalizationManager:
             raise ValueError("Language code cannot be empty")
         
         file_path = os.path.join(self.locale_dir, f"{language_code}.json")
+        self.logger.info(f"Looking for language file: {file_path}")
         
         if not os.path.exists(file_path):
             self.logger.warning(f"Language file not found: {file_path}")
             if language_code != self._fallback_language:
+                self.logger.info(f"Trying fallback language: {self._fallback_language}")
                 self.load_language(self._fallback_language)
                 return
         
