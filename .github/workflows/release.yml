@@ -30,19 +30,13 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
         
-    - name: List files and check spec
-      run: |
-        ls -la
-        echo "Checking for spec files:"
-        ls -la *.spec || echo "No spec files found"
-        
     - name: Build main application
       run: |
-        pyinstaller Kalkor.spec --clean --noconfirm
+        pyinstaller --onefile --windowed --name Kalkor --add-data "assets;assets" --add-data "locale;locale" --add-data "sounds;sounds" run.py
         
     - name: Build updater
       run: |
-        pyinstaller updater.spec --clean --noconfirm
+        pyinstaller --onefile --windowed --name updater updater.py
         
     - name: Create release package
       run: |
