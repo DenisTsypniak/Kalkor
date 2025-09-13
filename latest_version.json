@@ -1,23 +1,23 @@
 {
-    "version": "1.1.0",
-    "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.1.0/Kalkor_v1.1.0.zip",
-    "sha256": "",
-    "release_notes": "Initial release with full functionality",
-    "release_date": "2024-01-11",
-    "changelog": [
-        "✅ Complete code cleanup and optimization",
-        "✅ Fixed all bugs and improved performance",
-        "✅ Added database indexes for better performance",
-        "✅ Improved exception handling",
-        "✅ Reorganized project structure",
-        "✅ Added comprehensive testing",
-        "✅ Implemented automatic update system"
-    ],
-    "min_supported_version": "1.0.0",
-    "download_size": "~50MB",
-    "requirements": {
-        "os": "Windows 10+",
-        "ram": "512MB",
-        "disk": "100MB"
-    }
+  "version": "1.2.0",
+  "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.1.0/Kalkor_v1.1.0.zip",
+  "sha256": "",
+  "release_notes": "Initial release with full functionality",
+  "release_date": "2025-09-13",
+  "changelog": [
+    "✅ Complete code cleanup and optimization",
+    "✅ Fixed all bugs and improved performance",
+    "✅ Added database indexes for better performance",
+    "✅ Improved exception handling",
+    "✅ Reorganized project structure",
+    "✅ Added comprehensive testing",
+    "✅ Implemented automatic update system"
+  ],
+  "min_supported_version": "1.0.0",
+  "download_size": "~50MB",
+  "requirements": {
+    "os": "Windows 10+",
+    "ram": "512MB",
+    "disk": "100MB"
+  }
 }

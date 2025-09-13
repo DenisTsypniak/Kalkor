@@ -551,7 +551,7 @@ class PropertiesView(BaseView):
             if self.page:
                 self.page.show_snack_bar(
                     ft.SnackBar(
-                        content=ft.Text("Помилка відкриття діалогу додавання майна"),
+                        content=ft.Text(self.loc.get("properties_error_open_dialog", "Помилка відкриття діалогу додавання майна")),
                         bgcolor=ft.Colors.RED_600
                     )
                 )
@@ -1987,7 +1987,7 @@ class PropertiesView(BaseView):
         except Exception as e:
             if self.page:
                 self.page.snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Помилка при вставці: {str(e)}"),
+                    content=ft.Text(f"{self.loc.get('properties_error_paste', 'Помилка при вставці')}: {str(e)}"),
                     bgcolor=ft.Colors.RED_700
                 )
                 self.page.snack_bar.open = True
@@ -2000,7 +2000,7 @@ class PropertiesView(BaseView):
                 return
             image_data = self.page.clipboard.get_image()
             if not image_data:
-                self.page.snack_bar = ft.SnackBar(content=ft.Text("В буфері обміну немає зображення"), bgcolor=ft.Colors.RED_700)
+                self.page.snack_bar = ft.SnackBar(content=ft.Text(self.loc.get("properties_image_clipboard_no_image", "В буфері обміну немає зображення")), bgcolor=ft.Colors.RED_700)
                 self.page.snack_bar.open = True
                 self.page.update()
                 return
@@ -2009,7 +2009,7 @@ class PropertiesView(BaseView):
             pass
             # Показуємо превʼю через уніфікований блок
             self._update_preview()
-            self.page.snack_bar = ft.SnackBar(content=ft.Text("Зображення вставлено з буфера обміну!"), bgcolor=ft.Colors.GREEN_700)
+            self.page.snack_bar = ft.SnackBar(content=ft.Text(self.loc.get("properties_image_image_pasted", "Зображення вставлено з буфера обміну!")), bgcolor=ft.Colors.GREEN_700)
             self.page.snack_bar.open = True
             self.page.update()
         except Exception:
@@ -2659,11 +2659,11 @@ class PropertiesView(BaseView):
             dialog = ft.AlertDialog(
                 modal=True,
                 title=ft.Text(self.loc.get("properties_confirm_delete", default="Підтвердити видалення")),
-                content=ft.Text(f"Видалити майно '{prop.get('name', 'Unknown')}'?\n\nЦю дію не можна відмінити."),
+                content=ft.Text(f"{self.loc.get('properties_confirm_delete_content', 'Видалити майно')} '{prop.get('name', 'Unknown')}'?\n\n{self.loc.get('properties_confirm_delete_warning', 'Цю дію не можна відмінити.')}"),
                 actions=[
                     ft.TextButton(self.loc.get("properties_cancel", default="Скасувати"), on_click=lambda e: self._close_dialog_sync(dialog, False)),
                     ft.ElevatedButton(
-                        "Видалити",
+                        self.loc.get("properties_delete", "Видалити"),
                         bgcolor=ft.Colors.RED_700,
                         color=ft.Colors.WHITE,
                         on_click=lambda e: self._close_dialog_sync(dialog, True)
@@ -2847,7 +2847,7 @@ class PropertiesView(BaseView):
             
             # Додаємо заголовок
             self.preview_container.content.controls.append(
-                ft.Text("Попередній перегляд:", size=16, color=ft.Colors.WHITE70, weight=ft.FontWeight.W_500)
+                ft.Text(self.loc.get("properties_preview", "Попередній перегляд:"), size=16, color=ft.Colors.WHITE70, weight=ft.FontWeight.W_500)
             )
             
             # Додаємо зображення
@@ -2936,7 +2936,7 @@ class PropertiesView(BaseView):
             confirm_dialog = ft.AlertDialog(
                 modal=True,
                 title=ft.Text(self.loc.get("properties_restore_property", default="Повернути майно?")),
-                content=ft.Text(f"Ви дійсно хочете повернути '{prop.get('name', '')}' в активне майно?"),
+                content=ft.Text(f"{self.loc.get('properties_restore_confirm', 'Ви дійсно хочете повернути')} '{prop.get('name', '')}' {self.loc.get('properties_restore_to_active', 'в активне майно')}?"),
                 actions=[
                     ft.TextButton("Скасувати", on_click=lambda e: self._handle_cancel_restore(confirm_dialog)),
                     ft.TextButton("Повернути", on_click=lambda e: self._handle_confirm_restore(prop, confirm_dialog)),
@@ -3024,7 +3024,7 @@ class PropertiesView(BaseView):
             confirm_dialog = ft.AlertDialog(
                 modal=True,
                 title=ft.Text(self.loc.get("properties_restore_property", default="Повернути майно?")),
-                content=ft.Text(f"Ви дійсно хочете повернути '{prop.get('name', '')}' в активне майно?"),
+                content=ft.Text(f"{self.loc.get('properties_restore_confirm', 'Ви дійсно хочете повернути')} '{prop.get('name', '')}' {self.loc.get('properties_restore_to_active', 'в активне майно')}?"),
                 actions=[
                     ft.TextButton("Скасувати", on_click=lambda e: self._close_dialog_sync(confirm_dialog)),
                     ft.TextButton("Повернути", on_click=lambda e: self._handle_perform_restore_wrapper(prop, confirm_dialog)),
@@ -3211,7 +3211,7 @@ class PropertiesView(BaseView):
             dialog = ft.AlertDialog(
                 modal=True,
                 title=ft.Text(self.loc.get("properties_restore_property", default="Повернути майно?")),
-                content=ft.Text(f"Ви дійсно хочете повернути '{prop.get('name', '')}' в активне майно?"),
+                content=ft.Text(f"{self.loc.get('properties_restore_confirm', 'Ви дійсно хочете повернути')} '{prop.get('name', '')}' {self.loc.get('properties_restore_to_active', 'в активне майно')}?"),
                 actions=[
                     ft.TextButton(self.loc.get("properties_cancel", default="Скасувати"), on_click=lambda e: self._close_dialog_sync(dialog, False)),
                     ft.TextButton("Повернути", on_click=lambda e: self._close_dialog_sync(dialog, True)),

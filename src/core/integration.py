@@ -19,6 +19,8 @@ from src.themes.theme_manager import get_theme_manager
 from src.utils.validators import DataValidator
 from src.utils.backup_manager import get_backup_manager, dispose_backup_sync
 from src.utils.metrics_collector import get_metrics_collector, dispose_metrics_collector
+from src.utils.performance.optimizer import PerformanceOptimizer
+from src.utils.analytics_engine import AnalyticsEngine
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +98,18 @@ class SystemIntegrator:
             logger.info("Initializing metrics collector...")
             metrics_collector = get_metrics_collector()
             self._services['metrics_collector'] = metrics_collector
+            
+            # 13. Performance Optimizer
+            logger.info("Initializing performance optimizer...")
+            performance_optimizer = PerformanceOptimizer()
+            self._services['performance_optimizer'] = performance_optimizer
+            
+            # 14. Analytics Engine
+            logger.info("Initializing analytics engine...")
+            analytics_engine = AnalyticsEngine()
+            self._services['analytics_engine'] = analytics_engine
+            
+            # 15. Fallback Database Manager видалено, оскільки не використовується
             
             self._initialized = True
             logger.info("All systems initialized successfully!")

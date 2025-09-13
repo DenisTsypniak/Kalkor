@@ -5,7 +5,6 @@ import asyncio
 import sys
 import time
 from typing import Callable
-from pathlib import Path
 import os
 
 # Імпортуємо нові системи
@@ -85,6 +84,7 @@ class App:
                 # Повертаємо image_loader (безпечний)
                 self.image_loader = get_image_loader()
                 print("✅ Image loader initialized")
+                
             except Exception as e:
                 print(f"⚠️ Error initializing services: {e}")
                 self.animation_manager = None

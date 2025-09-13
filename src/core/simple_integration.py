@@ -50,6 +50,26 @@ class SimpleSystemIntegrator:
             except Exception as e:
                 logger.warning(f"⚠️ Theme manager failed: {e}")
             
+            # 4. Performance Optimizer
+            try:
+                from src.utils.performance.optimizer import PerformanceOptimizer
+                performance_optimizer = PerformanceOptimizer()
+                self._services['performance_optimizer'] = performance_optimizer
+                logger.info("✅ Performance optimizer initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Performance optimizer failed: {e}")
+            
+            # 5. Analytics Engine
+            try:
+                from src.utils.analytics_engine import AnalyticsEngine
+                analytics_engine = AnalyticsEngine()
+                self._services['analytics_engine'] = analytics_engine
+                logger.info("✅ Analytics engine initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Analytics engine failed: {e}")
+            
+            # 6. Fallback Database Manager видалено, оскільки не використовується
+            
             # 4. Image Loader
             try:
                 from src.utils.lazy_image_loader import get_image_loader

@@ -13,11 +13,24 @@ try:
     from src.core.database_pool import get_db_pool
     from src.utils.metrics_collector import track_operation
     from src.utils.error_handler import handle_errors, ErrorCategory, ErrorSeverity
+    from src.utils.performance.optimizer import PerformanceOptimizer
     OPTIMIZATION_ENABLED = True
     print("✅ Database pool system enabled")
 except ImportError as e:
     print(f"⚠️ Database pool not available: {e}")
     OPTIMIZATION_ENABLED = False
+
+# Ініціалізуємо Performance Optimizer
+_performance_optimizer = None
+
+def get_performance_optimizer():
+    """Отримує екземпляр Performance Optimizer"""
+    global _performance_optimizer
+    if _performance_optimizer is None:
+        _performance_optimizer = PerformanceOptimizer()
+    return _performance_optimizer
+
+# Fallback Database Manager видалено, оскільки не використовується
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +255,7 @@ async def delete_profile(profile_id: int):
 # --- ЗМІНЕНО: Повна реалізація фільтрації та пагінації ---
 @track_operation("load_transactions") if OPTIMIZATION_ENABLED else lambda x: x
 @handle_errors(ErrorCategory.DATABASE, ErrorSeverity.MEDIUM, "Помилка завантаження транзакцій") if OPTIMIZATION_ENABLED else lambda x: x
+@get_performance_optimizer().measure_performance("load_transactions")
 async def load_transactions(profile_id: int, start_date: datetime = None, end_date: datetime = None, limit: int = 50, offset: int = 0) -> list[dict]:
     """
     Завантажує транзакції з пагінацією та фільтрацією.
@@ -294,6 +308,7 @@ async def get_transactions_count(profile_id: int, start_date: datetime = None, e
 
 # --- ДОДАНО: Нова функція для отримання статистики за період ---
 # --- НОВА, ВИПРАВЛЕНА ВЕРСІЯ МЕТОДУ ---
+@get_performance_optimizer().measure_performance("get_transactions_stats")
 async def get_transactions_stats(profile_id: int, start_date: Optional[datetime], end_date: Optional[datetime]) -> dict:
     stats = {'income': 0.0, 'expense': 0.0}
     if not profile_id:
@@ -332,9 +347,18 @@ async def get_transactions_stats(profile_id: int, start_date: Optional[datetime]
 
 
 # --- ДОДАНО: Нова функція для розрахунку загального балансу ---
+@get_performance_optimizer().measure_performance("get_total_balance")
 async def get_total_balance(profile_id: int) -> float:
     if not profile_id:
         return 0.0
+    
+    # Перевіряємо кеш
+    cache_key = f"balance_{profile_id}"
+    optimizer = get_performance_optimizer()
+    cached_balance = optimizer.get_cached_result(cache_key)
+    if cached_balance is not None:
+        return cached_balance
+    
     query = """
         SELECT SUM(CASE WHEN type = 'дохід' THEN amount ELSE -amount END) as balance
         FROM transactions
@@ -343,7 +367,11 @@ async def get_total_balance(profile_id: int) -> float:
     async with get_db_connection() as conn:
         cursor = await conn.execute(query, (profile_id,))
         result = await cursor.fetchone()
-        return result['balance'] if result and result['balance'] is not None else 0.0
+        balance = result['balance'] if result and result['balance'] is not None else 0.0
+        
+        # Кешуємо результат на 30 секунд
+        optimizer.cache_result(cache_key, balance, ttl=30)
+        return balance
 
 
 # --- ЗМІНЕНО: Приймає profile_id ---
@@ -359,6 +387,12 @@ async def add_transaction(profile_id: int, trans_type: str, category: str, descr
             (profile_id, timestamp, trans_type, category, description, amount)
         )
         await conn.commit()
+        
+        # Очищуємо кеш балансу
+        optimizer = get_performance_optimizer()
+        cache_key = f"balance_{profile_id}"
+        if cache_key in optimizer.cache:
+            del optimizer.cache[cache_key]
 
 
 async def delete_transaction(transaction_id: int):
@@ -664,3 +698,6 @@ async def merge_categories(profile_id: int, source_names: list[str], target_name
             pass
             # У разі помилки - відкочуємо всі зміни
             await conn.rollback()
+
+# --- FALLBACK DATABASE MANAGER ФУНКЦІЇ ---
+# Синхронні функції видалені, оскільки не використовуються

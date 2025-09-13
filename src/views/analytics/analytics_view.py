@@ -13,6 +13,7 @@ from src.utils.ui.helpers import format_number_k, format_number_full
 # Імпортуємо нові системи
 from src.utils.logger import get_logger
 from src.utils.error_handler import handle_errors
+from src.utils.analytics_engine import AnalyticsEngine, AnalyticsData
 
 import calendar
 
@@ -41,6 +42,9 @@ class AnalyticsView(BaseView):
         self.summary_total_income_text = None
         self.summary_avg_income_text = None
         self.summary_most_profitable_text = None
+        
+        # Ініціалізуємо Analytics Engine
+        self.analytics_engine = AnalyticsEngine()
         
         self._create_pickers()
         self._create_controls()
@@ -667,3 +671,103 @@ class AnalyticsView(BaseView):
         else:
             self.animated_switcher.content = ft.Container()
         self.update()
+
+    # --- НОВІ МЕТОДИ З ANALYTICS ENGINE ---
+    
+    async def get_enhanced_financial_summary(self, period_days: int = 30) -> AnalyticsData:
+        """Отримує розширений фінансовий звіт через Analytics Engine"""
+        if not self.app_state.current_profile:
+            return None
+        
+        profile_id = self.app_state.current_profile['id']
+        return self.analytics_engine.get_financial_summary(profile_id, period_days)
+    
+    async def export_analytics_data(self, format_type: str = "json") -> str:
+        """Експортує дані аналітики"""
+        if not self.app_state.current_profile:
+            return None
+        
+        profile_id = self.app_state.current_profile['id']
+        return self.analytics_engine.export_data(profile_id, format_type)
+    
+    async def get_category_analysis(self) -> dict:
+        """Отримує детальний аналіз категорій"""
+        if not self.app_state.current_profile:
+            return {}
+        
+        profile_id = self.app_state.current_profile['id']
+        return self.analytics_engine.get_category_analysis(profile_id)
+    
+    async def get_trends_analysis(self, period_days: int = 30) -> dict:
+        """Отримує аналіз трендів"""
+        if not self.app_state.current_profile:
+            return {}
+        
+        profile_id = self.app_state.current_profile['id']
+        return self.analytics_engine.get_trends(profile_id, period_days)
+    
+    def create_enhanced_summary_view(self, analytics_data: AnalyticsData) -> ft.Container:
+        """Створює розширений summary view з даними Analytics Engine"""
+        if not analytics_data:
+            return ft.Container()
+        
+        return ft.Container(
+            content=ft.Column([
+                ft.Text(
+                    f"📊 {self.loc.get('analytics_title')} - {analytics_data.period}",
+                    size=20,
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.WHITE
+                ),
+                ft.Divider(color=ft.Colors.WHITE24),
+                ft.Row([
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text("💰 Загальний дохід", size=14, color=ft.Colors.GREEN_400),
+                            ft.Text(f"{format_number_full(analytics_data.total_income)}", 
+                                   size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_400)
+                        ]),
+                        padding=15,
+                        bgcolor=ft.Colors.WHITE12,
+                        border_radius=10,
+                        expand=True
+                    ),
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text("💸 Загальні витрати", size=14, color=ft.Colors.RED_400),
+                            ft.Text(f"{format_number_full(analytics_data.total_expenses)}", 
+                                   size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.RED_400)
+                        ]),
+                        padding=15,
+                        bgcolor=ft.Colors.WHITE12,
+                        border_radius=10,
+                        expand=True
+                    ),
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text("📈 Чистий прибуток", size=14, 
+                                   color=ft.Colors.GREEN_400 if analytics_data.net_profit >= 0 else ft.Colors.RED_400),
+                            ft.Text(f"{format_number_full(analytics_data.net_profit)}", 
+                                   size=18, weight=ft.FontWeight.BOLD,
+                                   color=ft.Colors.GREEN_400 if analytics_data.net_profit >= 0 else ft.Colors.RED_400)
+                        ]),
+                        padding=15,
+                        bgcolor=ft.Colors.WHITE12,
+                        border_radius=10,
+                        expand=True
+                    )
+                ], spacing=10),
+                ft.Divider(color=ft.Colors.WHITE24),
+                ft.Text("📋 Топ категорії", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                ft.Column([
+                    ft.Row([
+                        ft.Text(f"{cat['category']} ({cat['type']})", expand=True, color=ft.Colors.WHITE),
+                        ft.Text(f"{format_number_full(cat['total_amount'])}", 
+                               color=ft.Colors.GREEN_400 if cat['type'] == 'дохід' else ft.Colors.RED_400)
+                    ]) for cat in analytics_data.top_categories[:5]
+                ], spacing=5)
+            ], spacing=10),
+            padding=20,
+            bgcolor=ft.Colors.WHITE12,
+            border_radius=15
+        )

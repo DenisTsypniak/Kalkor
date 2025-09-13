@@ -39,73 +39,55 @@ def cleanup_old_files():
 
 
 async def check_for_updates(page: ft.Page) -> dict | None:
-    # Fallback URLs для надійності
-    json_urls = [
-        "https://raw.githubusercontent.com/DenisTsypniak/Kalkor/main/latest_version.json",
-        "https://github.com/DenisTsypniak/Kalkor/raw/main/latest_version.json",
-        "https://cdn.jsdelivr.net/gh/DenisTsypniak/Kalkor@main/latest_version.json"
-    ]
-    
-    headers = {
-        'Cache-Control': 'no-cache', 
-        'Pragma': 'no-cache',
-        'User-Agent': 'Kalkor-Updater/1.0'
-    }
-    
-    timeout = aiohttp.ClientTimeout(total=10)
-    
-    for i, json_url in enumerate(json_urls):
-        try:
-            print(f"🔍 Спроба {i+1}/{len(json_urls)}: {json_url}")
-            async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
-                async with session.get(json_url, params={"t": time.time()}) as response:
-                    if response.status != 200: 
-                        print(f"⚠️ HTTP {response.status} для URL {i+1}")
-                        continue
-                    
-                    try:
-                        update_data = await response.json(content_type=None)
-                    except Exception as json_error:
-                        print(f"⚠️ Помилка парсингу JSON для URL {i+1}: {json_error}")
-                        continue
-                    
-                    # Валідація структури JSON
-                    required_fields = ["version", "url"]
-                    for field in required_fields:
-                        if field not in update_data:
-                            print(f"⚠️ Відсутнє поле '{field}' в JSON оновлення для URL {i+1}")
-                            break
-                    else:
-                        print(f"✅ Успішно отримано дані з URL {i+1}")
-                        return update_data
-                        
-        except Exception as e:
-            print(f"⚠️ Помилка з URL {i+1}: {e}")
-            continue
-    
-    print("❌ Не вдалося отримати інформацію про оновлення з жодного URL")
-    return None
-
-
-async def compare_versions(update_data: dict) -> dict | None:
-    """Порівнює версії та повертає дані оновлення якщо потрібно"""
+    json_url = "https://raw.githubusercontent.com/DenisTsypniak/Kalkulator_Gta5RP/main/latest_version.json"
     try:
-        latest_version = update_data.get("version")
-        current_version = APP_VERSION
+        headers = {
+            'Cache-Control': 'no-cache', 
+            'Pragma': 'no-cache',
+            'User-Agent': 'Kalkor-Updater/1.0'
+        }
         
-        print(f"🔍 Поточна версія: {current_version}")
-        print(f"🔍 Остання версія: {latest_version}")
-        
-        if version.parse(latest_version) > version.parse(current_version):
-            print(f"✅ Доступне оновлення до версії {latest_version}")
-            return update_data
-        else:
-            print("✅ Використовується остання версія")
-            return None
-            
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+            async with session.get(json_url, params={"t": time.time()}) as response:
+                if response.status != 200: 
+                    print(f"⚠️ Помилка отримання інформації про оновлення: HTTP {response.status}")
+                    return None
+                
+                try:
+                    update_data = await response.json(content_type=None)
+                except Exception as json_error:
+                    print(f"⚠️ Помилка парсингу JSON: {json_error}")
+                    return None
+                
+                # Валідація структури JSON
+                required_fields = ["version", "url"]
+                for field in required_fields:
+                    if field not in update_data:
+                        print(f"⚠️ Відсутнє поле '{field}' в JSON оновлення")
+                        return None
+                
+                latest_version = update_data.get("version")
+                current_version = APP_VERSION
+                
+                print(f"🔍 Поточна версія: {current_version}")
+                print(f"🔍 Остання версія: {latest_version}")
+                
+                if version.parse(latest_version) > version.parse(current_version):
+                    print(f"✅ Доступне оновлення до версії {latest_version}")
+                    return update_data
+                else:
+                    print("✅ Використовується остання версія")
+                    return None
+                    
+    except asyncio.TimeoutError:
+        print("⚠️ Таймаут при перевірці оновлень")
+    except aiohttp.ClientError as e:
+        print(f"⚠️ Помилка мережі при перевірці оновлень: {e}")
     except Exception as e:
-        print(f"⚠️ Помилка порівняння версій: {e}")
-        return None
+        print(f"⚠️ Неочікувана помилка при перевірці оновлень: {e}")
+    
+    return None
 
 
 async def main(page: ft.Page):
@@ -161,45 +143,43 @@ async def main(page: ft.Page):
     if IS_BUNDLED:
         # --- БЛОК ОНОВЛЕННЯ ---
         cleanup_old_files()
-        update_data = await check_for_updates(page)
-        if update_data:
-            update_info = await compare_versions(update_data)
-            if update_info:
-                try:
-                    print(f"🚀 Запуск оновлення до версії {update_info.get('version', 'unknown')}")
-                    
-                    # Перевіряємо, чи існує updater.exe
-                    if not os.path.exists(UPDATER_EXE_NAME):
-                        print(f"❌ Файл {UPDATER_EXE_NAME} не знайдено")
-                        page.controls.clear()
-                        page.add(ft.Text(f"Файл оновлення {UPDATER_EXE_NAME} не знайдено", color=ft.Colors.RED))
-                        page.update()
-                        await asyncio.sleep(5)
-                        sys.exit(1)
-                    
-                    # Запускаємо updater з URL
-                    DETACHED_PROCESS = 0x00000008
-                    updater_args = [UPDATER_EXE_NAME, update_info["url"]]
-                    
-                    print(f"🔧 Запуск: {' '.join(updater_args)}")
-                    subprocess.Popen(updater_args, creationflags=DETACHED_PROCESS, close_fds=True)
-                    
-                    # Показуємо повідомлення користувачу
+        update_info = await check_for_updates(page)
+        if update_info:
+            try:
+                print(f"🚀 Запуск оновлення до версії {update_info.get('version', 'unknown')}")
+                
+                # Перевіряємо, чи існує updater.exe
+                if not os.path.exists(UPDATER_EXE_NAME):
+                    print(f"❌ Файл {UPDATER_EXE_NAME} не знайдено")
                     page.controls.clear()
-                    page.add(ft.Text("Оновлення запущено. Будь ласка, зачекайте...", 
-                                   color=ft.Colors.WHITE, size=16, text_align=ft.TextAlign.CENTER))
+                    page.add(ft.Text(f"Файл оновлення {UPDATER_EXE_NAME} не знайдено", color=ft.Colors.RED))
                     page.update()
-                    
-                    # Даємо час для запуску updater
-                    await asyncio.sleep(2)
-                    sys.exit(0)
-                    
-                except Exception as e:
-                    print(f"❌ Помилка запуску оновлення: {e}")
-                    page.controls.clear()
-                    page.add(ft.Text(f"Не вдалося запустити оновлення: {e}", 
-                                   color=ft.Colors.RED, size=16, text_align=ft.TextAlign.CENTER))
-                    page.update()
+                    await asyncio.sleep(5)
+                    sys.exit(1)
+                
+                # Запускаємо updater з URL
+                DETACHED_PROCESS = 0x00000008
+                updater_args = [UPDATER_EXE_NAME, update_info["url"]]
+                
+                print(f"🔧 Запуск: {' '.join(updater_args)}")
+                subprocess.Popen(updater_args, creationflags=DETACHED_PROCESS, close_fds=True)
+                
+                # Показуємо повідомлення користувачу
+                page.controls.clear()
+                page.add(ft.Text("Оновлення запущено. Будь ласка, зачекайте...", 
+                               color=ft.Colors.WHITE, size=16, text_align=ft.TextAlign.CENTER))
+                page.update()
+                
+                # Даємо час для запуску updater
+                await asyncio.sleep(2)
+                sys.exit(0)
+                
+            except Exception as e:
+                print(f"❌ Помилка запуску оновлення: {e}")
+                page.controls.clear()
+                page.add(ft.Text(f"Не вдалося запустити оновлення: {e}", 
+                               color=ft.Colors.RED, size=16, text_align=ft.TextAlign.CENTER))
+                page.update()
                 await asyncio.sleep(5)
                 sys.exit(1)
             return
@@ -212,8 +192,8 @@ async def main(page: ft.Page):
     try:
         icon_path = os.path.join("assets", "app_icon.ico")
         page.window_icon = resource_path(icon_path)
-    except Exception as e:
-        logger.warning(f"Failed to set window icon: {e}")
+    except Exception:
+        pass
 
     await init_db()
     
@@ -250,8 +230,8 @@ async def main(page: ft.Page):
                     page.window_height = 900
                     page.window_resizable = False
                     page.update()
-            except Exception as e:
-                logger.warning(f"Failed to check window size: {e}")
+            except:
+                pass
             await asyncio.sleep(1)  # Перевіряємо кожну секунду
     
     # Запускаємо перевірку в фоні

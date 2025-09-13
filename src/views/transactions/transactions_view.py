@@ -19,6 +19,7 @@ from src.views.base_view import BaseView
 from src.utils.logger import get_logger
 from src.utils.error_handler import handle_errors
 from src.utils.validators import DataValidator
+from src.utils.virtualized_list import VirtualizedList, VirtualizationConfig
 
 logger = get_logger(__name__)
 
@@ -45,6 +46,15 @@ class TransactionsView(BaseView):
         self.small_items_cache = []
         self.large_items_cache = []
         self.is_legend_expanded = False
+        
+        # Ініціалізуємо VirtualizedList
+        self.virtualized_list = None
+        self.virtualization_config = VirtualizationConfig(
+            item_height=80,
+            container_height=400,
+            buffer_size=5,
+            scroll_threshold=0.1
+        )
 
         self.merge_source_categories: list[ft.Checkbox] = []
         self.merge_target_name_field: ft.TextField | None = None
@@ -1209,3 +1219,125 @@ class TransactionsView(BaseView):
             is_active = button.data == self.time_filter
             button.style = ft.ButtonStyle(bgcolor=ft.Colors.PRIMARY_CONTAINER) if is_active else ft.ButtonStyle()
         if update_page and self.page: self.update()
+
+    # --- НОВІ МЕТОДИ З VIRTUALIZED LIST ---
+    
+    def _create_transaction_item_renderer(self, transaction_data: dict, index: int) -> ft.Container:
+        """Створює рендерер для елемента транзакції"""
+        return ft.Container(
+            content=ft.Row([
+                ft.Container(
+                    content=ft.Icon(
+                        ft.Icons.ARROW_UPWARD if transaction_data['type'] == 'дохід' else ft.Icons.ARROW_DOWNWARD,
+                        color=ft.Colors.GREEN_400 if transaction_data['type'] == 'дохід' else ft.Colors.RED_400,
+                        size=20
+                    ),
+                    width=40,
+                    height=40,
+                    bgcolor=ft.Colors.WHITE12,
+                    border_radius=20,
+                    alignment=ft.alignment.center
+                ),
+                ft.Column([
+                    ft.Text(
+                        transaction_data['category'],
+                        size=16,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.WHITE
+                    ),
+                    ft.Text(
+                        transaction_data['description'] or '',
+                        size=12,
+                        color=ft.Colors.GREY_400,
+                        max_lines=1,
+                        overflow=ft.TextOverflow.ELLIPSIS
+                    )
+                ], expand=True, spacing=2),
+                ft.Column([
+                    ft.Text(
+                        f"{'+' if transaction_data['type'] == 'дохід' else '-'}{format_number(transaction_data['amount'])}",
+                        size=16,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.GREEN_400 if transaction_data['type'] == 'дохід' else ft.Colors.RED_400,
+                        text_align=ft.TextAlign.END
+                    ),
+                    ft.Text(
+                        transaction_data['timestamp'][:10],
+                        size=10,
+                        color=ft.Colors.GREY_500,
+                        text_align=ft.TextAlign.END
+                    )
+                ], horizontal_alignment=ft.CrossAxisAlignment.END, spacing=2)
+            ], spacing=15),
+            padding=ft.padding.symmetric(horizontal=20, vertical=12),
+            bgcolor=ft.Colors.WHITE12,
+            border_radius=10,
+            margin=ft.margin.only(bottom=8)
+        )
+    
+    def _create_virtualized_transactions_list(self, transactions: list) -> ft.Container:
+        """Створює віртуалізований список транзакцій"""
+        if not transactions:
+            return ft.Container(
+                content=ft.Text("Немає транзакцій", color=ft.Colors.GREY_400),
+                alignment=ft.alignment.center,
+                height=200
+            )
+        
+        # Ініціалізуємо VirtualizedList якщо ще не ініціалізована
+        if not self.virtualized_list:
+            self.virtualized_list = VirtualizedList(
+                config=self.virtualization_config,
+                item_renderer=self._create_transaction_item_renderer
+            )
+        
+        # Встановлюємо дані
+        self.virtualized_list.set_data(transactions)
+        
+        # Створюємо контейнер для віртуалізованого списку
+        return ft.Container(
+            content=self.virtualized_list.get_container(),
+            height=self.virtualization_config.container_height,
+            border_radius=10,
+            bgcolor=ft.Colors.WHITE12
+        )
+    
+    async def _load_transactions_for_virtualization(self, start_index: int, count: int) -> list:
+        """Завантажує транзакції для віртуалізації"""
+        if not self.app_state.current_profile:
+            return []
+        
+        profile_id = self.app_state.current_profile['id']
+        
+        # Визначаємо дати на основі фільтру
+        end_date = datetime.now()
+        if self.time_filter == cfg.TIME_FILTER_DAY:
+            start_date = end_date - timedelta(days=1)
+        elif self.time_filter == cfg.TIME_FILTER_WEEK:
+            start_date = end_date - timedelta(weeks=1)
+        elif self.time_filter == cfg.TIME_FILTER_MONTH:
+            start_date = end_date - timedelta(days=30)
+        else:
+            start_date = None
+        
+        # Завантажуємо транзакції
+        transactions = await dm.load_transactions(
+            profile_id=profile_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=count,
+            offset=start_index
+        )
+        
+        return transactions
+    
+    def enable_virtualization(self, enable: bool = True):
+        """Увімкнення/вимкнення віртуалізації"""
+        if enable and not self.virtualized_list:
+            self.virtualized_list = VirtualizedList(
+                config=self.virtualization_config,
+                item_renderer=self._create_transaction_item_renderer,
+                data_loader=self._load_transactions_for_virtualization
+            )
+        elif not enable and self.virtualized_list:
+            self.virtualized_list = None
