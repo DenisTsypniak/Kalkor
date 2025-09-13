@@ -1,7 +1,7 @@
 {
-  "version": "1.2.1",
-  "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.1.0/Kalkor_v1.1.0.zip",
-  "sha256": "",
+  "version": "1.2.3",
+  "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.2.3/Kalkor_v1.2.3.zip",
+  "sha256": "C6F5B8D6276AE22049983471AFE8299CE9E66F240672E286DC7247FB68BF058C",
   "release_notes": "Initial release with full functionality",
   "release_date": "2025-09-13",
   "changelog": [
