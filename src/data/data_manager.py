@@ -93,6 +93,62 @@ async def get_db_connection():
         await conn.close()
 
 
+async def get_db_version():
+    """Отримує поточну версію схеми бази даних"""
+    async with get_db_connection() as conn:
+        try:
+            cursor = await conn.execute("SELECT version FROM db_version ORDER BY id DESC LIMIT 1")
+            result = await cursor.fetchone()
+            return result['version'] if result else "0.0.0"
+        except:
+            return "0.0.0"
+
+async def set_db_version(version):
+    """Встановлює версію схеми бази даних"""
+    async with get_db_connection() as conn:
+        await conn.execute("INSERT INTO db_version (version, updated_at) VALUES (?, ?)", 
+                          (version, datetime.now().isoformat()))
+        await conn.commit()
+
+async def migrate_database():
+    """Виконує міграцію бази даних до нової версії"""
+    current_version = await get_db_version()
+    target_version = "1.2.7"
+    
+    if current_version == target_version:
+        return  # База даних вже актуальна
+    
+    print(f"🔄 Міграція бази даних з версії {current_version} до {target_version}")
+    
+    async with get_db_connection() as conn:
+        # Створюємо таблицю версій, якщо її немає
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS db_version (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                version TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        ''')
+        
+        # Міграція до версії 1.2.7
+        if current_version < "1.2.7":
+            # Перевіряємо, чи існує колонка created_timestamp
+            cursor = await conn.execute("PRAGMA table_info(properties)")
+            columns = [row[1] for row in await cursor.fetchall()]
+            
+            if 'created_timestamp' not in columns:
+                print("📝 Додаємо колонку created_timestamp до таблиці properties")
+                await conn.execute("ALTER TABLE properties ADD COLUMN created_timestamp TEXT")
+                
+                # Заповнюємо існуючі записи поточною датою
+                await conn.execute("UPDATE properties SET created_timestamp = ? WHERE created_timestamp IS NULL", 
+                                 (datetime.now().isoformat(),))
+        
+        # Встановлюємо нову версію
+        await set_db_version(target_version)
+        await conn.commit()
+        print(f"✅ Міграція завершена. Версія бази даних: {target_version}")
+
 async def init_db():
     """
     Ініціалізує структуру бази даних.
@@ -219,6 +275,9 @@ async def init_db():
             await conn.execute("ALTER TABLE properties ADD COLUMN created_timestamp TEXT")
 
         await conn.commit()
+    
+    # Виконуємо міграцію до нової версії
+    await migrate_database()
 
 
 async def save_setting(key: str, value: str):
