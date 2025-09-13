@@ -118,5 +118,5 @@ jobs:
         git config --local user.name "GitHub Action"
         git add latest_version.json
         git commit -m "Update latest_version.json for ${{ github.ref_name }}" || exit 0
-        git push
+        git push origin master
 

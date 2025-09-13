@@ -53,7 +53,7 @@ def create_git_tag(version):
 
 def push_to_github():
     """Відправляє зміни на GitHub"""
-    subprocess.run(['git', 'push', 'origin', 'main'], check=True)
+    subprocess.run(['git', 'push', 'origin', 'master'], check=True)
     subprocess.run(['git', 'push', 'origin', '--tags'], check=True)
     
     print("✅ Зміни відправлено на GitHub")
