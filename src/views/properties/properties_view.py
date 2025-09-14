@@ -13,6 +13,7 @@ from src.utils.ui.helpers import (
     BUTTON_STYLE_PRIMARY, BUTTON_STYLE_SECONDARY, BUTTON_STYLE_DANGER,
     TEXT_FIELD_STYLE, create_loading_indicator, create_error_message
 )
+from src.utils.ui.date_picker import ModernDatePicker
 from src.services.property_service import PropertyService, PropertyData
 from src.utils.drag_drop_manager import DragDropManager
 from src.views.base_view import BaseView
@@ -205,7 +206,11 @@ class PropertiesView(BaseView):
             if not hasattr(self, '_data_preloaded') or not self._data_preloaded:
                 # Виконуємо handle_profile_change тільки якщо дані ще не завантажені
                 if self.page and self.app_state.current_profile:
+                    print(f"🔍 First load: calling handle_profile_change for profile {self.app_state.current_profile.get('id')}")
                     await self.handle_profile_change(self.app_state.current_profile)
+                    # Після завантаження даних примусово оновлюємо UI
+                    print(f"🔍 First load: forcing UI refresh after data load")
+                    await self._refresh_list(show_loading=False, force_refresh=True, skip_ui_update=False)
             else:
                 # Дані вже завантажені, оновлюємо UI з кешованими даними
                 if self.page:
@@ -654,9 +659,11 @@ class PropertiesView(BaseView):
             
             # Завантажуємо майно та підсумок паралельно для швидшого завантаження
             if use_cache and not force_refresh and status == "active" and hasattr(self, "_active_props_cache"):
+                print(f"🔍 Using cache: {len(self._active_props_cache)} items")
                 props = list(self._active_props_cache)
                 summary = None
             else:
+                print(f"🔍 Loading from DB: force_refresh={force_refresh}, use_cache={use_cache}, status={status}")
                 # Завантажуємо дані паралельно
                 props_task = SafeAsyncExecutor.execute(
                     self.property_service.get_properties, 
@@ -706,8 +713,10 @@ class PropertiesView(BaseView):
             )
             
             # Оновлюємо контент тільки якщо він змінився
-            if self.list_container and self.list_container.content != content:
+            if self.list_container:
+                print(f"🔍 Updating list_container content: has_container={bool(self.list_container)}, content_changed={self.list_container.content != content}")
                 self.list_container.content = content
+                print(f"🔍 Content updated successfully")
                 
                 # Оновлюємо header після зміни контенту
                 if status == "active":
@@ -729,6 +738,7 @@ class PropertiesView(BaseView):
                 self.page.update()
 
     async def _build_active_list(self, props: List[dict]) -> ft.Control:
+        print(f"🔍 _build_active_list called with {len(props) if props else 0} properties")
         # Зберігаємо кеш для швидкого оновлення без блимання
         self._active_props_cache = list(props)
 
@@ -740,7 +750,7 @@ class PropertiesView(BaseView):
                 self._current_active_ids = []
             
             return self._placeholder(
-                self.loc.get("properties_placeholders_list_empty", default="Немає майна")
+                self.loc.get("properties_list_empty", default="Список майна порожній.\nНатисніть 'Додати майно' щоб почати.")
             )
 
         try:
@@ -754,9 +764,10 @@ class PropertiesView(BaseView):
         return dashboard
 
     def _build_sold_list(self, props: List[dict]) -> ft.Control:
+        print(f"🔍 _build_sold_list called with {len(props) if props else 0} properties")
         if not props:
             return self._placeholder(
-                self.loc.get("properties_placeholders_list_empty_sold", default="Немає проданого майна")
+                self.loc.get("properties_list_empty_sold", default="У вас ще немає проданого майна.")
             )
         
         # Створюємо сучасний dashboard
@@ -779,15 +790,29 @@ class PropertiesView(BaseView):
             card_height=height
         )
 
+    def _create_form_divider(self) -> ft.Container:
+        """Створює розділювач для форм"""
+        return ft.Container(
+            content=ft.Divider(
+                height=1,
+                color=ft.Colors.WHITE24,
+                thickness=1
+            ),
+            margin=ft.margin.symmetric(vertical=20)
+        )
+    
     def _create_cards_row(self, cards: List[ft.DragTarget], spacing: int = 12) -> ft.Row:
         """
         Створює рядок з draggable картками
         """
+        print(f"🔍 _create_cards_row called with {len(cards)} cards, drag_drop_manager={bool(self.drag_drop_manager)}")
         if not self.drag_drop_manager:
             logger.error("❌ DragDropManager not initialized")
             return ft.Row(cards, spacing=spacing)
         
-        return self.drag_drop_manager.create_draggable_row(cards, spacing)
+        result = self.drag_drop_manager.create_draggable_row(cards, spacing)
+        print(f"🔍 _create_cards_row created row with {len(result.controls) if hasattr(result, 'controls') else 'unknown'} controls")
+        return result
 
     def _active_card_body(self, prop: dict) -> ft.Container:
         """Створює тіло картки для активного майна"""
@@ -853,23 +878,26 @@ class PropertiesView(BaseView):
             )
         ], spacing=4)
         
-        # Дата додавання
-        created_dt = prop.get("created_timestamp", "")
-        if created_dt and isinstance(created_dt, str):
+        # Дата покупки (спочатку пробуємо purchase_date, потім fallback на created_timestamp)
+        purchase_dt = prop.get("purchase_date", "")
+        if not purchase_dt:
+            purchase_dt = prop.get("created_timestamp", "")
+            
+        if purchase_dt and isinstance(purchase_dt, str):
             try:
                 # Конвертуємо ISO формат в читабельний
                 from datetime import datetime
-                dt_obj = datetime.fromisoformat(created_dt.replace('Z', '+00:00'))
+                dt_obj = datetime.fromisoformat(purchase_dt.replace('Z', '+00:00'))
                 formatted_date = dt_obj.strftime("%d.%m.%Y")
             except:
-                formatted_date = created_dt[:10] if len(created_dt) >= 10 else created_dt
+                formatted_date = purchase_dt[:10] if len(purchase_dt) >= 10 else purchase_dt
         else:
             formatted_date = self.loc.get("properties_misc_unknown", default="Невідомо")
             
         date_text = ft.Row([
             ft.Icon(ft.Icons.CALENDAR_TODAY, color=ft.Colors.GREY_500, size=14),
             ft.Text(
-                f"{self.loc.get('properties_misc_added_date', default='Додано:')} {formatted_date}",
+                f"{self.loc.get('properties_misc_purchase_date', default='Куплено:')} {formatted_date}",
                 color=ft.Colors.GREY_500,
                 size=12
             )
@@ -1465,8 +1493,11 @@ class PropertiesView(BaseView):
         
         # Створюємо картки активного майна (горизонтальний ряд)
         active_cards = []
+        print(f"🔍 Creating {len(props)} active cards")
         for idx, prop in enumerate(props):
+            print(f"🔍 Creating card {idx+1}: {prop.get('name', 'Unknown')} (ID: {prop.get('id')})")
             active_cards.append(self._create_draggable_card(self._active_card_body(prop), prop.get("id"), "props_swap", self._on_swap_accept_async))
+        print(f"🔍 Created {len(active_cards)} active cards")
         
         # Створюємо Row з картками та зберігаємо посилання для подальшого оновлення
         cards_row = self._create_cards_row(active_cards)
@@ -1855,12 +1886,15 @@ class PropertiesView(BaseView):
             except ValueError:
                 return
             
+            # Отримуємо дату покупки
+            purchase_date = self.input_purchase_date.get_date_string() if self.input_purchase_date else None
+            
             # Закриваємо форму
             self._close_form_container()
             
             # Запускаємо асинхронне редагування
             if self.page:
-                self.page.run_task(self._save_edit_property_async, prop_id, name, price_value)
+                self.page.run_task(self._save_edit_property_async, prop_id, name, price_value, purchase_date)
         except Exception:
             pass
 
@@ -2042,18 +2076,89 @@ class PropertiesView(BaseView):
         name_field = ft.TextField(label=self.loc.get("properties_name_label", default="Назва майна"), width=520, **TEXT_FIELD_STYLE)
         price_field = ft.TextField(label=self.loc.get("properties_price_label", default="Ціна"), width=520, input_filter=ft.NumbersOnlyInputFilter(), **TEXT_FIELD_STYLE)
         
+        # Лейбл та відображення дати покупки
+        purchase_date_label = ft.Text(
+            self.loc.get("properties_purchase_date_label", default="Дата покупки"),
+            size=16,
+            weight=ft.FontWeight.BOLD,
+            color=ft.Colors.WHITE
+        )
+        
+        # Відображення поточної дати
+        self.purchase_date_display = ft.Text(
+            "",  # Буде заповнено пізніше
+            size=14,
+            color=ft.Colors.WHITE70,
+            weight=ft.FontWeight.NORMAL
+        )
+        
+        # Кнопка календаря
+        calendar_button = ft.IconButton(
+            icon=ft.Icons.CALENDAR_MONTH,
+            tooltip="Відкрити календар",
+            icon_color=ft.Colors.WHITE,
+            icon_size=20,
+            style=ft.ButtonStyle(
+                bgcolor=ft.Colors.AMBER_600 if mode == "edit" else ft.Colors.BLUE_600,
+                shape=ft.RoundedRectangleBorder(radius=4)
+            )
+        )
+        
+        # Date picker (тільки календар)
+        purchase_date_picker = ModernDatePicker(
+            page=self.page,
+            mode=mode,  # Передаємо режим (add/edit)
+            localization_manager=self.loc  # Передаємо локалізацію
+        )
+        
+        # Встановлюємо callback для оновлення відображення дати
+        def on_date_changed(selected_date):
+            self.purchase_date_display.value = selected_date.strftime("%d.%m.%Y")
+            if self.page:
+                self.page.update()
+        
+        purchase_date_picker.on_date_changed = on_date_changed
+        
+        # Прив'язуємо кнопку календаря до date picker
+        calendar_button.on_click = purchase_date_picker._toggle_calendar
+        
+        # Ініціалізуємо поточну дату для нового майна
+        if mode == "add":
+            from datetime import date
+            today = date.today()
+            purchase_date_picker.set_date(today)
+            self.purchase_date_display.value = today.strftime("%d.%m.%Y")
+        
         # Зберігаємо посилання на поля для використання в _submit_add_edit_async
         self.input_name = name_field
         self.input_price = price_field
+        self.input_purchase_date = purchase_date_picker
         
         # Для режиму продажу робимо назву тільки для читання
         if mode == "sell":
             name_field.read_only = True
             name_field.disabled = True
+            # Для date picker в режимі продажу просто не дозволяємо зміни
+            purchase_date_picker.disabled = True
 
         # Якщо редагуємо або продаємо — підставляємо значення
         if prop:
             name_field.value = prop.get("name", "")
+            # Встановлюємо дату в picker та відображення
+            purchase_date_str = prop.get("purchase_date", "")
+            if purchase_date_str:
+                purchase_date_picker.set_date_from_string(purchase_date_str)
+                # Встановлюємо відображення дати
+                try:
+                    from datetime import datetime
+                    dt_obj = datetime.strptime(purchase_date_str, "%Y-%m-%d")
+                    self.purchase_date_display.value = dt_obj.strftime("%d.%m.%Y")
+                except:
+                    self.purchase_date_display.value = purchase_date_str[:10] if len(purchase_date_str) >= 10 else purchase_date_str
+            else:
+                # Якщо дата не встановлена, показуємо поточну дату
+                from datetime import date
+                self.purchase_date_display.value = date.today().strftime("%d.%m.%Y")
             if mode == "sell":
                 # В режимі продажу показуємо поточну ціну майна як початкове значення
                 try:
@@ -2182,10 +2287,31 @@ class PropertiesView(BaseView):
                 # Для редагування - аналогічно до продажу, але з фото та прев'ю
                 self.form_body = ft.Column([
                     ft.Container(height=2),  # Мінімальний відступ зверху
+                    
+                    # Група 1: Назва та ціна
                     name_field, 
                     ft.Container(height=12), 
                     price_field,  # Тепер поле ціни має вбудований лейбл
+                    
+                    # Розділювач 1
+                    self._create_form_divider(),
+                    
+                    # Група 2: Дата покупки
+                    ft.Row([
+                        purchase_date_label,
+                        calendar_button
+                    ], spacing=5, alignment=ft.MainAxisAlignment.START),
+                    ft.Container(height=6),
+                    # Відображення дати
+                    self.purchase_date_display,
                     ft.Container(height=12),
+                    # Date picker (тільки календар)
+                    purchase_date_picker,
+                    
+                    # Розділювач 2
+                    self._create_form_divider(),
+                    
+                    # Група 3: Фото та прев'ю
                     photo_buttons,  # Кнопки фото
                     ft.Container(height=8),
                     self.preview_container,  # Прев'ю зображення
@@ -2193,8 +2319,36 @@ class PropertiesView(BaseView):
                     # Кнопки будуть додані пізніше
                 ], spacing=0)
             else:
-                # Для додавання - стара структура
-                self.form_body = ft.Column([name_field, ft.Container(height=16), price_field, ft.Container(height=16), photo_buttons, ft.Container(height=12), self.preview_container], spacing=0, scroll=ft.ScrollMode.AUTO)
+                # Для додавання - оновлена структура
+                self.form_body = ft.Column([
+                    # Група 1: Назва та ціна
+                    name_field, 
+                    ft.Container(height=16), 
+                    price_field, 
+                    
+                    # Розділювач 1
+                    self._create_form_divider(),
+                    
+                    # Група 2: Дата покупки
+                    ft.Row([
+                        purchase_date_label,
+                        calendar_button
+                    ], spacing=5, alignment=ft.MainAxisAlignment.START),
+                    ft.Container(height=6),
+                    # Відображення дати
+                    self.purchase_date_display,
+                    ft.Container(height=12),
+                    # Date picker (тільки календар)
+                    purchase_date_picker, 
+                    
+                    # Розділювач 2
+                    self._create_form_divider(),
+                    
+                    # Група 3: Фото та прев'ю
+                    photo_buttons, 
+                    ft.Container(height=12), 
+                    self.preview_container
+                ], spacing=0, scroll=ft.ScrollMode.AUTO)
         # Кнопки дій (створюємо після форми)
         cancel_button = ft.ElevatedButton(self.loc.get("properties_cancel", default="Скасувати"), on_click=lambda e: self._close_form_container(), style=BUTTON_STYLE_DANGER, width=None, height=None)
 
@@ -2215,7 +2369,9 @@ class PropertiesView(BaseView):
                 except Exception:
                     return
                 if self.page and prop:
-                    self.page.run_task(self._save_edit_property_async, prop.get("id"), name_field.value, price_value)
+                    # Отримуємо дату покупки
+                    purchase_date = self.input_purchase_date.get_date_string() if self.input_purchase_date else None
+                    self.page.run_task(self._save_edit_property_async, prop.get("id"), name_field.value, price_value, purchase_date)
             elif mode == "sell":
                 # Для продажу використаємо ціну як selling_price
                 try:
@@ -2317,6 +2473,14 @@ class PropertiesView(BaseView):
             self.input_name.value = ""
         if hasattr(self, 'input_price'):
             self.input_price.value = ""
+        if hasattr(self, 'input_purchase_date'):
+            # Скидаємо date picker до поточної дати
+            from datetime import date
+            self.input_purchase_date.set_date(date.today())
+        if hasattr(self, 'purchase_date_display'):
+            # Скидаємо відображення дати до поточної дати
+            from datetime import date
+            self.purchase_date_display.value = date.today().strftime("%d.%m.%Y")
         if hasattr(self, 'preview_image') and self.preview_image is not None:
             try:
                 if hasattr(self.preview_image, 'visible') and hasattr(self.preview_image, '_set_attr_internal'):
@@ -2334,6 +2498,7 @@ class PropertiesView(BaseView):
             # Отримуємо дані з полів
             name = self.input_name.value.strip() if self.input_name else ""
             price_str = self.input_price.value.strip() if self.input_price else ""
+            purchase_date = self.input_purchase_date.get_date_string() if self.input_purchase_date else ""
             
             # Валідація назви
             if not name:
@@ -2366,6 +2531,8 @@ class PropertiesView(BaseView):
                 await self._toast(self.loc.get("properties_price_too_large", default="Ціна занадто велика"), error=True)
                 return
 
+            # Date picker завжди повертає валідну дату, тому валідація не потрібна
+
             profile = self.app_state.current_profile
             if not profile:
                 await self._toast(self.loc.get("properties_profile_not_found", default="Профіль не знайдено"), error=True)
@@ -2375,7 +2542,8 @@ class PropertiesView(BaseView):
             property_data = PropertyData(
                 name=name,
                 price=price,
-                image_b64=getattr(self, 'current_image_b64', None) or ""
+                image_b64=getattr(self, 'current_image_b64', None) or "",
+                purchase_date=purchase_date if purchase_date else None
             )
             
             # Валідуємо через сервіс
@@ -2505,12 +2673,17 @@ class PropertiesView(BaseView):
         if self.page:
             self.page.run_task(self._open_property_overlay, "sell", prop)
 
-    async def _save_edit_property_async(self, prop_id: int, name: str, price_value: float):
+    async def _save_edit_property_async(self, prop_id: int, name: str, price_value: float, purchase_date: str = None):
         try:
-            property_data = PropertyData(name=name, price=price_value, image_b64=getattr(self, 'current_image_b64', None) or "")
+            property_data = PropertyData(
+                name=name, 
+                price=price_value, 
+                image_b64=getattr(self, 'current_image_b64', None) or "",
+                purchase_date=purchase_date
+            )
             await SafeAsyncExecutor.execute(self.property_service.update_property, prop_id, property_data)
             self._close_form_container()
-            await self._refresh_list()
+            await self._refresh_list(force_refresh=True)  # Примусово оновлюємо з БД
             await self._show_success_message(self.loc.get("properties_success_save", default="Збережено"))
         except Exception as e:
             await self._show_error_message(str(e))
@@ -3349,8 +3522,8 @@ class PropertiesView(BaseView):
             
             # Спробуємо Banner замість AlertDialog
             test_banner = ft.Banner(
-                bgcolor=ft.colors.AMBER_100,
-                leading=ft.Icon(ft.icons.WARNING_AMBER_ROUNDED, color=ft.colors.AMBER, size=20),
+                bgcolor=ft.Colors.AMBER_100,
+                leading=ft.Icon(ft.icons.WARNING_AMBER_ROUNDED, color=ft.Colors.AMBER, size=20),
                 content=ft.Text(
                     "Це тестовий банер для перевірки кнопок"
                 ),

@@ -79,8 +79,8 @@ class App:
             try:
                 self.integrator = get_integrator()
                 print("✅ Integrator initialized")
-                # Відключаємо animation_manager (викликає чорний екран)
-                self.animation_manager = None
+                # Включаємо animation_manager для анімацій
+                self.animation_manager = get_animation_manager()
                 # Повертаємо image_loader (безпечний)
                 self.image_loader = get_image_loader()
                 print("✅ Image loader initialized")
@@ -434,6 +434,53 @@ class App:
             # Отримання фокусу - відновлюємо фокус на текстові поля
             self._restore_text_focus()
     
+    def cleanup(self):
+        """Очищає ресурси при закритті додатку"""
+        try:
+            print("🔍 Cleaning up app resources...")
+            
+            # Закриваємо всі спливаючі вікна
+            self._close_all_overlays()
+            
+            # Очищаємо views
+            if hasattr(self, 'views'):
+                for view in self.views.values():
+                    if hasattr(view, 'cleanup'):
+                        view.cleanup()
+            
+            # Очищаємо системи оптимізації
+            try:
+                from src.core.simple_integration import dispose_optimization_systems
+                dispose_optimization_systems()
+                print("✅ Optimization systems disposed")
+            except Exception as e:
+                print(f"⚠️ Error disposing optimization systems: {e}")
+            
+            # Очищаємо базу даних
+            try:
+                import asyncio
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self._cleanup_database())
+                else:
+                    loop.run_until_complete(self._cleanup_database())
+            except Exception as e:
+                print(f"⚠️ Error cleaning up database: {e}")
+            
+            print("✅ App cleanup completed")
+            
+        except Exception as e:
+            print(f"⚠️ Error during app cleanup: {e}")
+    
+    async def _cleanup_database(self):
+        """Асинхронна очистка бази даних"""
+        try:
+            from src.data.data_manager import close_all_connections
+            await close_all_connections()
+            print("✅ Database connections closed")
+        except Exception as e:
+            print(f"⚠️ Error closing database connections: {e}")
+    
     def _close_all_overlays(self):
         """Закриває всі спливаючі вікна в overlay"""
         if not self.page or not hasattr(self.page, 'overlay'):
@@ -625,13 +672,16 @@ class App:
         start_time = time.time() if OPTIMIZATION_ENABLED else 0
         logger.info(f"🧭 Navigate to: {view_name or 'default'}")
         try:
-            # Додаємо анімацію переходу якщо доступна
+            # Додаємо анімацію переходу якщо доступна (працює в компільованій версії)
             if OPTIMIZATION_ENABLED and hasattr(self, 'animation_manager') and self.animation_manager is not None:
-                # Анімація fade out поточного view
-                for view in self.views.values():
-                    if view.visible:
-                        self.animation_manager.fade_out(view, duration=0.2)
-                        await asyncio.sleep(0.1)
+                try:
+                    # Анімація fade out поточного view
+                    for view in self.views.values():
+                        if view.visible:
+                            self.animation_manager.fade_out(view, duration=0.2)
+                            await asyncio.sleep(0.1)
+                except Exception as e:
+                    print(f"⚠️ Animation error: {e}")
             
             # Визначаємо який view показувати
             view_keys = list(self.views.keys())
@@ -741,9 +791,12 @@ class App:
                     logger.error(f"Error in on_view_show for {key_to_show}: {ex}")
                     pass
             
-            # Додаємо анімацію fade in для нового view
+            # Додаємо анімацію fade in для нового view (працює в компільованій версії)
             if OPTIMIZATION_ENABLED and hasattr(self, 'animation_manager') and self.animation_manager is not None and active_view:
-                self.animation_manager.fade_in(active_view, duration=0.3)
+                try:
+                    self.animation_manager.fade_in(active_view, duration=0.3)
+                except Exception as e:
+                    print(f"⚠️ Animation error: {e}")
             
             # Закриваємо калькулятор якщо він відкритий
             if hasattr(self, 'calculator_container') and self.calculator_container is not None and self.calculator_container.visible: 

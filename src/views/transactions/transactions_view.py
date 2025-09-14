@@ -17,7 +17,7 @@ from src.views.base_view import BaseView
 
 # Імпортуємо нові системи
 from src.utils.logger import get_logger
-from src.utils.error_handler import handle_errors
+from src.utils.error_handler import handle_errors, handle_errors_async
 from src.utils.validators import DataValidator
 from src.utils.virtualized_list import VirtualizedList, VirtualizationConfig
 
@@ -290,7 +290,7 @@ class TransactionsView(BaseView):
         self.stats_income = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
         self.stats_expense = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
         self.balance_display_text = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
-        self.edit_balance_icon = ft.IconButton(icon=ft.Icons.EDIT_NOTE_OUTLINED, on_click=self.open_edit_balance_dialog,
+        self.edit_balance_icon = ft.IconButton(icon=ft.Icons.EDIT_NOTE_OUTLINED, on_click=lambda e: self.page.run_task(self.open_edit_balance_dialog, e),
                                                tooltip=self.loc.get("transactions_edit_balance_tooltip"))
         self.balance_label_text = ft.Text(self.loc.get("transactions_balance"))
         balance_label_row = ft.Row(controls=[self.balance_label_text, self.edit_balance_icon], spacing=4,
@@ -327,7 +327,7 @@ class TransactionsView(BaseView):
         self.main_content.padding = ft.padding.only(left=20, top=20, bottom=20, right=20)
 
         self.add_transaction_button = ft.IconButton(icon=ft.Icons.ADD, tooltip=self.loc.get("transactions_add_tooltip"),
-                                                    on_click=self.open_transaction_dialog, icon_color=ft.Colors.WHITE,
+                                                    on_click=lambda e: self.page.run_task(self.open_transaction_dialog, e), icon_color=ft.Colors.WHITE,
                                                     bgcolor=ft.Colors.GREEN_700, icon_size=24)
         self.calculator_button = ft.IconButton(icon=ft.Icons.CALCULATE_OUTLINED,
                                                tooltip=self.loc.get("transactions_calculator_tooltip"),
@@ -443,10 +443,10 @@ class TransactionsView(BaseView):
                                                 border_radius=8, expand=True, animate=ft.Animation(300, "ease"))
         self.dialog_category_dropdown = ft.Dropdown(label=self.loc.get("transactions_dialog_category_label"),
                                                     dense=True, expand=True)
-        self.add_category_button = ft.IconButton(icon=ft.Icons.ADD, on_click=self.open_add_category_dialog,
+        self.add_category_button = ft.IconButton(icon=ft.Icons.ADD, on_click=lambda e: self.page.run_task(self.open_add_category_dialog, e),
                                                  tooltip=self.loc.get("transactions_dialog_add_category_tooltip"))
 
-        self.merge_category_button = ft.IconButton(icon=ft.Icons.MERGE_TYPE, on_click=self.open_merge_categories_dialog,
+        self.merge_category_button = ft.IconButton(icon=ft.Icons.MERGE_TYPE, on_click=lambda e: self.page.run_task(self.open_merge_categories_dialog, e),
                                                    tooltip=self.loc.get("transactions_dialog_merge_category_tooltip"))
         self.dialog_category_row = ft.Row(
             [self.dialog_category_dropdown, self.add_category_button, self.merge_category_button], visible=True)
@@ -458,7 +458,7 @@ class TransactionsView(BaseView):
                                                 on_change=self.on_amount_change)
         self.dialog_submit_button = ft.ElevatedButton(icon=ft.Icons.CHECK_CIRCLE_OUTLINE, height=45,
                                                       style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
-                                                      on_click=self.add_or_update_transaction_action)
+                                                      on_click=lambda e: self.page.run_task(self.add_or_update_transaction_action, e))
         self.dialog_calculator_button = ft.IconButton(icon=ft.Icons.CALCULATE_OUTLINED,
                                                       on_click=self.open_calculator_from_dialog,
                                                       tooltip=self.loc.get("transactions_calculator_tooltip"))
@@ -766,7 +766,7 @@ class TransactionsView(BaseView):
             self.close_sub_dialog(self.confirm_delete_category_dialog)
             await self.update_ui_data(reset_pagination=True)
 
-    @handle_errors("add_or_update_transaction")
+    @handle_errors_async("add_or_update_transaction")
     async def add_or_update_transaction_action(self, e):
         if not self.app_state.current_profile: return
         profile_id = self.app_state.current_profile['id']
@@ -785,11 +785,9 @@ class TransactionsView(BaseView):
             if not self.validator.validate_amount(amount):
                 raise ValueError(self.loc.get("error_amount_zero"))
             
+            # Для доходів категорія обов'язкова, для витрат - ні
             if is_income and not category:
                 raise ValueError(self.loc.get("error_category_empty"))
-            
-            if not self.validator.validate_category(category) and category:
-                raise ValueError("Invalid category")
             
             # Логуємо дію користувача
             logger.log_user_action("add_transaction", user_id=str(profile_id))

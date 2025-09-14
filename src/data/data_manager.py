@@ -196,6 +196,7 @@ async def init_db():
                 name TEXT NOT NULL,
                 price REAL NOT NULL,
                 image_b64 TEXT,
+                purchase_date TEXT,
                 status TEXT DEFAULT 'active',
                 display_order INTEGER DEFAULT 0,
                 sold_timestamp TEXT,
@@ -273,6 +274,8 @@ async def init_db():
             await conn.execute("ALTER TABLE properties ADD COLUMN selling_price REAL")
         if 'created_timestamp' not in prop_columns:
             await conn.execute("ALTER TABLE properties ADD COLUMN created_timestamp TEXT")
+        if 'purchase_date' not in prop_columns:
+            await conn.execute("ALTER TABLE properties ADD COLUMN purchase_date TEXT")
 
         await conn.commit()
     
@@ -581,7 +584,7 @@ async def load_properties(profile_id: int, status: str = 'active') -> list[dict]
 
     async with get_db_connection() as conn:
         cursor = await conn.execute(
-            f"SELECT id, name, price, image_b64, display_order, selling_price, sold_timestamp, created_timestamp FROM properties WHERE profile_id = ? AND status = ? {order_by_clause}",
+            f"SELECT id, name, price, image_b64, display_order, selling_price, sold_timestamp, created_timestamp, purchase_date FROM properties WHERE profile_id = ? AND status = ? {order_by_clause}",
             (profile_id, status)
         )
         properties = await cursor.fetchall()
@@ -593,7 +596,7 @@ async def load_properties(profile_id: int, status: str = 'active') -> list[dict]
 # --- ЗМІНЕНО: Приймає profile_id ---
 @track_operation("add_property") if OPTIMIZATION_ENABLED else lambda x: x
 @handle_errors(ErrorCategory.DATABASE, ErrorSeverity.HIGH, "Помилка додавання майна") if OPTIMIZATION_ENABLED else lambda x: x
-async def add_property(profile_id: int, name: str, price: float, image_b64: str) -> int | None:
+async def add_property(profile_id: int, name: str, price: float, image_b64: str, purchase_date: str = None) -> int | None:
     if not profile_id:
         return None
     
@@ -605,8 +608,8 @@ async def add_property(profile_id: int, name: str, price: float, image_b64: str)
         next_order = (max_val or 0) + 1
         created_timestamp = datetime.now().isoformat()
         insert_cursor = await conn.execute(
-            "INSERT INTO properties (profile_id, name, price, image_b64, display_order, created_timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-            (profile_id, name, price, image_b64, next_order, created_timestamp)
+            "INSERT INTO properties (profile_id, name, price, image_b64, display_order, created_timestamp, purchase_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (profile_id, name, price, image_b64, next_order, created_timestamp, purchase_date)
         )
         await conn.commit()
         try:
@@ -617,11 +620,11 @@ async def add_property(profile_id: int, name: str, price: float, image_b64: str)
             return None
 
 
-async def update_property(property_id: int, name: str, price: float, image_b64: str):
+async def update_property(property_id: int, name: str, price: float, image_b64: str, purchase_date: str = None):
     async with get_db_connection() as conn:
         await conn.execute(
-            "UPDATE properties SET name = ?, price = ?, image_b64 = ? WHERE id = ?",
-            (name, price, image_b64, property_id)
+            "UPDATE properties SET name = ?, price = ?, image_b64 = ?, purchase_date = ? WHERE id = ?",
+            (name, price, image_b64, purchase_date, property_id)
         )
         await conn.commit()
 
@@ -698,6 +701,18 @@ async def update_sold_properties_order(profile_id: int, ordered_ids: list[int]):
                     (index, prop_id, profile_id)
                 )
         await conn.commit()
+
+async def close_all_connections():
+    """Закриває всі з'єднання з базою даних"""
+    try:
+        if OPTIMIZATION_ENABLED:
+            from src.core.database_pool import close_pool
+            await close_pool()
+            print("✅ Database pool closed")
+        else:
+            print("⚠️ Database pool not available for cleanup")
+    except Exception as e:
+        print(f"⚠️ Error closing database pool: {e}")
 
 
 

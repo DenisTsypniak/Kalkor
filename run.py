@@ -138,6 +138,29 @@ async def main(page: ft.Page):
         return False
     
     page.on_keyboard_event = on_keyboard_event
+    
+    # Обробник закриття вікна
+    def on_window_event(e):
+        if e.data == "resize":
+            # Тимчасово вимикаємо Windows API блокування
+            # lock_window_size()
+            page.update()
+        elif e.data == "close":
+            # Обробка закриття додатку
+            print("🔍 Window close event received")
+            try:
+                # Очищаємо ресурси
+                if 'app' in locals():
+                    app.cleanup()
+                # Закриваємо всі асинхронні задачі
+                asyncio.get_event_loop().stop()
+            except Exception as ex:
+                print(f"⚠️ Error during cleanup: {ex}")
+            finally:
+                # Примусово завершуємо процес
+                os._exit(0)
+    
+    page.on_window_event = on_window_event
     # Прибираємо індикатор завантаження
 
     if IS_BUNDLED:

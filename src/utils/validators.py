@@ -42,9 +42,10 @@ class DataValidator:
     
     def validate_category(self, category: str) -> bool:
         """Валідація категорії"""
-        if not isinstance(category, str) or not category.strip():
+        if not isinstance(category, str):
             return False
-        return category in self.valid_categories
+        # Дозволяємо порожні категорії (для витрат) та непусті категорії
+        return True
     
     def validate_property_name(self, name: str) -> bool:
         """Валідація назви нерухомості"""

@@ -8,7 +8,7 @@ from typing import Callable, Any, Optional, Union
 from functools import wraps
 import time
 import flet as ft
-from .ui_helpers import create_loading_indicator
+# from .ui_helpers import create_loading_indicator  # Видалено - не використовується
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,25 @@ def async_ui_operation(loading_key: Optional[str] = None, show_loading: bool = T
             try:
                 if show_loading and loading_key:
                     # Створюємо loading індикатор
-                    loading_indicator = create_loading_indicator()
+                    loading_indicator = ft.Container(
+                        content=ft.Row([
+                            ft.ProgressRing(
+                                width=20,
+                                height=20,
+                                stroke_width=2,
+                                color=ft.Colors.BLUE_400
+                            ),
+                            ft.Text(
+                                "Завантаження...",
+                                color=ft.Colors.WHITE70,
+                                size=14
+                            )
+                        ], 
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        spacing=10),
+                        padding=ft.padding.all(20),
+                        alignment=ft.alignment.center
+                    )
                     loading_manager.show_loading(loading_key, loading_indicator)
                 
                 # Виконуємо операцію

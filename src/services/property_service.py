@@ -17,6 +17,7 @@ class PropertyData:
     price: float
     image_b64: Optional[str] = None
     property_id: Optional[int] = None
+    purchase_date: Optional[str] = None
     
     def validate(self) -> List[str]:
         """Валідує дані майна"""
@@ -81,7 +82,8 @@ class PropertyService:
                 profile_id=profile_id,
                 name=property_data.name.strip(),
                 price=property_data.price,
-                image_b64=property_data.image_b64 or ""
+                image_b64=property_data.image_b64 or "",
+                purchase_date=property_data.purchase_date
             )
             
             # Створюємо транзакцію покупки
@@ -119,7 +121,8 @@ class PropertyService:
                 property_id,
                 name=property_data.name.strip(),
                 price=property_data.price,
-                image_b64=property_data.image_b64 or ""
+                image_b64=property_data.image_b64 or "",
+                purchase_date=property_data.purchase_date
             )
             
             # Оновлюємо транзакцію покупки якщо змінилася ціна
