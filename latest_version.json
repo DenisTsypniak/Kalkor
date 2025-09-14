@@ -1,7 +1,7 @@
 {
   "version": "1.2.13",
   "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.2.13/Kalkor_v1.2.13.zip",
-  "sha256": "9D72402167E927FFD10A199DE861875541E6659DEB5A451C5EF40609CF021E43",
+  "sha256": "A5B649E86C8647688D38E3EEB160E69C445E0EF9CFE1C1A0BEC2964542330327",
   "release_notes": "Fixed transactions view error and updated all versions to 1.2.13",
   "release_date": "2025-09-14",
   "changelog": [
