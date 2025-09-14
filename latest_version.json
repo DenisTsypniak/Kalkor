@@ -1,10 +1,11 @@
 {
-  "version": "1.2.12",
-  "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.2.12/Kalkor_v1.2.12.zip",
-  "sha256": "3B84DF19FAA67E272AEECDA5A4522CDA29A826ACB527B68FEB44D1DF34252E3F",
-  "release_notes": "Critical bug fixes for compiled version",
-  "release_date": "2025-09-14",
+  "version": "1.2.13",
+  "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.2.13/Kalkor_v1.2.13.zip",
+  "sha256": "",
+  "release_notes": "Fixed transactions view error and updated all versions to 1.2.13",
+  "release_date": "2025-01-14",
   "changelog": [
+    "🔧 FIX: Fixed transactions view error (AssertionError in edit balance dialog)",
     "🔒 SECURITY: Removed source code from releases for commercial use",
     "🔧 FIX: Fixed update URL to correct repository (Kalkor)",
     "🔧 FIX: Fixed GitHub Actions workflow for proper git checkout",
