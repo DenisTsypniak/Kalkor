@@ -1,0 +1,22 @@
+# Приховуємо source code в релізах
+src/ export-ignore
+tests/ export-ignore
+.github/ export-ignore
+*.py export-ignore
+requirements.txt export-ignore
+pytest.ini export-ignore
+run_tests.py export-ignore
+create_release.py export-ignore
+fix_database.py export-ignore
+modern_date_picker.py export-ignore
+Kalkor.spec export-ignore
+README.md export-ignore
+RELEASE_INSTRUCTIONS.md export-ignore
+
+# Включаємо тільки необхідні файли
+assets/ export-subst
+locale/ export-subst
+sounds/ export-subst
+config.json export-subst
+latest_version.json export-subst
+updater.py export-subst

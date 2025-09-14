@@ -8,9 +8,9 @@ on:
     inputs:
       version:
 
-        description: 'Version to release (e.g., v1.2.11)'
+        description: 'Version to release (e.g., v1.2.12)'
         required: true
-        default: 'v1.2.11'
+        default: 'v1.2.12'
 
 jobs:
   build-and-release:
@@ -103,10 +103,14 @@ jobs:
           ### 🔄 Auto-Update:
           The application will automatically check for updates and notify you when a new version is available.
           
+          ### 💳 Subscription:
+          This is a premium application. Please contact the developer for subscription details.
+          
         files: |
           Kalkor_${{ github.ref_name }}.zip
         draft: false
         prerelease: false
+        generate_release_notes: false
         
     - name: Commit updated latest_version.json
       run: |
