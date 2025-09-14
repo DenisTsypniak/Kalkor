@@ -113,7 +113,7 @@ async def set_db_version(version):
 async def migrate_database():
     """Виконує міграцію бази даних до нової версії"""
     current_version = await get_db_version()
-        target_version = "1.2.13"
+    target_version = "1.2.13"
     
     if current_version == target_version:
         return  # База даних вже актуальна
