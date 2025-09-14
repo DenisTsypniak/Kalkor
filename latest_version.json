@@ -1,9 +1,9 @@
 {
   "version": "1.2.11",
   "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.2.11/Kalkor_v1.2.11.zip",
-  "sha256": "",
+  "sha256": "F76CD0B99BA38F49A3CB0C10A2CE272C1925228011A408DF56D6D306FE0B056C",
   "release_notes": "Critical bug fixes for compiled version",
-  "release_date": "2025-01-27",
+  "release_date": "2025-09-14",
   "changelog": [
     "🔧 FIX: Fixed update URL to correct repository (Kalkor)",
     "🔧 FIX: Fixed GitHub Actions workflow for proper git checkout",
