@@ -39,7 +39,7 @@ def cleanup_old_files():
 
 
 async def check_for_updates(page: ft.Page) -> dict | None:
-    json_url = "https://raw.githubusercontent.com/DenisTsypniak/Kalkulator_Gta5RP/main/latest_version.json"
+    json_url = "https://raw.githubusercontent.com/DenisTsypniak/Kalkor/main/latest_version.json"
     try:
         headers = {
             'Cache-Control': 'no-cache', 

@@ -113,7 +113,7 @@ async def set_db_version(version):
 async def migrate_database():
     """Виконує міграцію бази даних до нової версії"""
     current_version = await get_db_version()
-    target_version = "1.2.10"
+    target_version = "1.2.11"
     
     if current_version == target_version:
         return  # База даних вже актуальна
@@ -130,8 +130,8 @@ async def migrate_database():
             )
         ''')
         
-        # Міграція до версії 1.2.10
-        if current_version < "1.2.10":
+        # Міграція до версії 1.2.11
+        if current_version < "1.2.11":
             # Перевіряємо, чи існує колонка created_timestamp
             cursor = await conn.execute("PRAGMA table_info(properties)")
             columns = [row[1] for row in await cursor.fetchall()]
