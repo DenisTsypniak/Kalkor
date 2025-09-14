@@ -8,9 +8,9 @@ on:
     inputs:
       version:
 
-        description: 'Version to release (e.g., v1.2.7)'
+        description: 'Version to release (e.g., v1.2.10)'
         required: true
-        default: 'v1.2.7'
+        default: 'v1.2.10'
 
 jobs:
   build-and-release:
@@ -112,7 +112,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git checkout master
+        git checkout -B master
         git add latest_version.json
         git commit -m "Update latest_version.json for ${{ github.ref_name }}" || exit 0
         git push origin master

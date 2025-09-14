@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Kalkulator",
-    "version": "1.2.8",
+    "version": "1.2.10",
     "language": "uk",
     "theme": "light",
     "window": {

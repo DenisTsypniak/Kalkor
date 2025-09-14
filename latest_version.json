@@ -1,10 +1,11 @@
 {
-  "version": "1.2.9",
-  "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.2.9/Kalkor_v1.2.9.zip",
+  "version": "1.2.10",
+  "url": "https://github.com/DenisTsypniak/Kalkor/releases/download/v1.2.10/Kalkor_v1.2.10.zip",
   "sha256": "",
   "release_notes": "Critical bug fixes for compiled version",
   "release_date": "2025-01-27",
   "changelog": [
+    "🔧 FIX: Fixed GitHub Actions workflow for proper git checkout",
     "🔧 CRITICAL FIX: Application now properly closes in compiled version",
     "🎬 FIX: Profile selection animations now work in compiled version",
     "🗃️ IMPROVEMENT: Added proper resource cleanup on app exit",
