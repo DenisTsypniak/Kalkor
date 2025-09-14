@@ -290,7 +290,7 @@ class TransactionsView(BaseView):
         self.stats_income = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
         self.stats_expense = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
         self.balance_display_text = ft.Row(alignment=ft.MainAxisAlignment.CENTER)
-        self.edit_balance_icon = ft.IconButton(icon=ft.Icons.EDIT_NOTE_OUTLINED, on_click=lambda e: self.page.run_task(self.open_edit_balance_dialog, e),
+        self.edit_balance_icon = ft.IconButton(icon=ft.Icons.EDIT_NOTE_OUTLINED, on_click=self.open_edit_balance_dialog,
                                                tooltip=self.loc.get("transactions_edit_balance_tooltip"))
         self.balance_label_text = ft.Text(self.loc.get("transactions_balance"))
         balance_label_row = ft.Row(controls=[self.balance_label_text, self.edit_balance_icon], spacing=4,
